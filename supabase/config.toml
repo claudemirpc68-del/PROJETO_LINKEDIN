@@ -1,0 +1,25 @@
+project_id = "yitbcthgzebeeimbgesu"
+
+[functions.generate-post]
+verify_jwt = false
+
+[functions.analyze-post]
+verify_jwt = false
+
+[functions.generate-carousel]
+verify_jwt = false
+
+[functions.publish-linkedin]
+verify_jwt = false
+
+[functions.generate-image]
+verify_jwt = false
+
+[functions.save-image]
+verify_jwt = false
+
+[functions.tavily-search]
+verify_jwt = false
+
+[functions.generate-linkedin-caption]
+verify_jwt = false

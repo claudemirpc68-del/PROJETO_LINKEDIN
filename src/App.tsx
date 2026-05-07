@@ -1,0 +1,48 @@
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ThemeProvider } from "next-themes";
+import { AuthProvider } from "@/contexts/AuthContext";
+import Dashboard from "./pages/Dashboard";
+import Index from "./pages/Index";
+import Templates from "./pages/Templates";
+import Analyze from "./pages/Analyze";
+import Carousel from "./pages/Carousel";
+import Calendar from "./pages/Calendar";
+import Gallery from "./pages/Gallery";
+import LinkedIn from "./pages/LinkedIn";
+import Install from "./pages/Install";
+import NotFound from "./pages/NotFound";
+const queryClient = new QueryClient();
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <AuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/chat" element={<Index />} />
+              <Route path="/templates" element={<Templates />} />
+              <Route path="/analyze" element={<Analyze />} />
+              <Route path="/carousel" element={<Carousel />} />
+              <Route path="/calendar" element={<Calendar />} />
+              <Route path="/gallery" element={<Gallery />} />
+              <Route path="/linkedin" element={<LinkedIn />} />
+              <Route path="/install" element={<Install />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AuthProvider>
+    </ThemeProvider>
+  </QueryClientProvider>
+);
+
+export default App;

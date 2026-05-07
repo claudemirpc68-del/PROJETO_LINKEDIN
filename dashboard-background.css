@@ -1,0 +1,41 @@
+/* Gradiente Moderno LinkedIn → Roxo */
+.dashboard-background {
+  background: linear-gradient(135deg, #0A66C2 0%, #7C3AED 50%, #DB2777 100%);
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+/* Com overlay para suavizar */
+.dashboard-background::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.05);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Versão escura */
+.dashboard-background-dark {
+  background: linear-gradient(135deg, #0A66C2 0%, #4C1D95 50%, #1E1B4B 100%);
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+/* Animação suave de movimento */
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.dashboard-background-animated {
+  background: linear-gradient(-45deg, #0A66C2, #7C3AED, #DB2777, #0A66C2);
+  background-size: 400% 400%;
+  animation: gradient-shift 15s ease infinite;
+  background-attachment: fixed;
+  min-height: 100vh;
+}
