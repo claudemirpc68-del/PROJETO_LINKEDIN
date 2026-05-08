@@ -31,6 +31,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { generateUUID } from '@/utils/uuid';
 
 const CAROUSEL_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-carousel`;
 
@@ -89,7 +90,7 @@ export default function CarouselPage() {
 
       const result = await response.json();
       setSlides(result.slides.map((s: { title: string; content: string }) => ({
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         title: s.title,
         content: s.content
       })));
@@ -103,7 +104,7 @@ export default function CarouselPage() {
 
   const addSlide = () => {
     setSlides([...slides, {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       title: `Slide ${slides.length + 1}`,
       content: ''
     }]);
@@ -137,7 +138,7 @@ export default function CarouselPage() {
     if (slides.length === 0) return;
     
     const newCarousel: Carousel = {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       title: topic || 'Carrossel sem título',
       slides: slides.map((s, i) => ({
         id: s.id,

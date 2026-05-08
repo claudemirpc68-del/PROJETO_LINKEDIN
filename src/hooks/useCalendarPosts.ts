@@ -5,6 +5,7 @@ import { useLocalStorage } from './useLocalStorage';
 import { CalendarPost, TemplateCategory } from '@/types';
 import { useToast } from './use-toast';
 import { format, parseISO } from 'date-fns';
+import { generateUUID } from '@/utils/uuid';
 
 // Map local status to database status
 const statusToDb: Record<CalendarPost['status'], string> = {
@@ -146,7 +147,7 @@ export function useCalendarPosts() {
   // Add a new post
   const addPost = useCallback(async (postData: Omit<CalendarPost, 'id' | 'createdAt'>) => {
     const newPost: CalendarPost = {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       ...postData,
       createdAt: new Date()
     };

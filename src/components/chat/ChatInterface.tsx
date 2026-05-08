@@ -22,6 +22,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
+import { generateUUID } from '@/utils/uuid';
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-post`;
 
@@ -139,7 +140,7 @@ export function ChatInterface() {
       let streamDone = false;
 
       // Criar uma mensagem temporária para o streaming na UI
-      const tempAssistantId = crypto.randomUUID();
+      const tempAssistantId = generateUUID();
       
       while (!streamDone) {
         const { done, value } = await reader.read();

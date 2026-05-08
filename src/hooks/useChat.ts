@@ -5,6 +5,7 @@ import { Message, Conversation } from '@/types';
 import { useLocalStorage } from './useLocalStorage';
 import { toast } from 'sonner';
 import { parseISO } from 'date-fns';
+import { generateUUID } from '@/utils/uuid';
 
 export function useChat() {
   const { user } = useAuth();
@@ -121,7 +122,7 @@ export function useChat() {
   }, [user, migrationDone, localConversations.length, migrateConversations]);
 
   const createConversation = async (title: string) => {
-    const tempId = crypto.randomUUID();
+    const tempId = generateUUID();
     const newConv: Conversation = {
       id: tempId,
       title: title,
@@ -160,7 +161,7 @@ export function useChat() {
 
   const addMessage = async (conversationId: string, role: 'user' | 'assistant', content: string) => {
     const newMessage: Message = {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       role,
       content,
       timestamp: new Date()
