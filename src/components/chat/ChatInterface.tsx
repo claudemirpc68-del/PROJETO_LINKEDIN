@@ -211,11 +211,6 @@ export function ChatInterface() {
     }
   };
 
-  const handleNewChat = () => {
-    setCurrentConversationId(null);
-    setShowHistory(false);
-  };
-
   const handleSuggestionClick = (suggestion: string) => {
     setInput(suggestion);
     textareaRef.current?.focus();
