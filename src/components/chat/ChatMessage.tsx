@@ -3,6 +3,8 @@ import { cn } from '@/lib/utils';
 import { Message } from '@/types';
 import { PostActionBar } from './PostActionBar';
 
+import { Markdown } from './Markdown';
+
 interface ChatMessageProps {
   message: Message;
 }
@@ -31,23 +33,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
             isUser ? 'chat-bubble-user' : 'chat-bubble-assistant'
           )}
         >
-          <div className={cn('prose prose-sm max-w-none', isUser ? 'prose-invert' : '')}>
-            {message.content.split('\n').map((line, i) => {
-              const parts = line.split(/(\*\*.*?\*\*)/g);
-              const formattedLine = parts.map((part, j) => {
-                if (part.startsWith('**') && part.endsWith('**')) {
-                  return <strong key={j}>{part.slice(2, -2)}</strong>;
-                }
-                return part;
-              });
-
-              return (
-                <p key={i} className={cn('mb-1 last:mb-0', line === '' && 'h-3')}>
-                  {formattedLine}
-                </p>
-              );
-            })}
-          </div>
+          <Markdown content={message.content} className={isUser ? 'prose-invert' : ''} />
         </div>
         
         {/* Integrated Action Bar for assistant messages */}

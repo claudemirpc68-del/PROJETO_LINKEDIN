@@ -1,73 +1,79 @@
-# Welcome to your Lovable project
+# README do Projeto: LinkedIn Viral
 
-## Project info
+Este projeto é uma plataforma completa para criação, análise e agendamento de conteúdo viral para o LinkedIn, utilizando Inteligência Artificial de ponta e uma interface premium.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## 🚀 Tecnologias Utilizadas
 
-## How can I edit this code?
+O projeto foi construído com uma stack moderna e escalável:
 
-There are several ways of editing your application.
+- **Frontend**: React 18 + Vite 5
+- **Linguagem**: TypeScript 5
+- **Estilização**: Tailwind CSS v3 + shadcn/ui (componentes de alta qualidade)
+- **Animações**: Framer Motion
+- **Backend**: Supabase (Autenticação, Database, Storage e Edge Functions)
+- **IA**: Gemini 3 Flash e Gemini 1.5 Flash (via Lovable AI Gateway)
+- **Busca**: Tavily API para contexto em tempo real
 
-**Use Lovable**
+## 📋 Funcionalidades Principais
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+1.  **💬 Chat com IA**: Geração de posts otimizados para o LinkedIn com streaming em tempo real.
+2.  **📊 Análise de Posts**: Avaliação de potencial viral (score 0-100) com feedback sobre gancho, estrutura e CTA.
+3.  **🎠 Gerador de Carrossel**: Criação automática de estruturas de slides para carrosséis do LinkedIn.
+4.  **📅 Calendário Editorial**: Gestão visual de posts agendados e histórico de publicações.
+5.  **🖼️ Galeria de Imagens**: Geração de imagens via IA em diversos estilos (Corporativo, Minimalista, etc.) e armazenamento seguro.
+6.  **📝 Templates Estratégicos**: Biblioteca de modelos validados para diferentes objetivos (Dicas, Cases, Tendências).
+7.  **🔐 Autenticação Completa**: Sistema de login seguro com persistência de dados por usuário.
+8.  **🌐 Landing Page Premium**: Interface de apresentação com animações e prova social.
 
-Changes made via Lovable will be committed automatically to this repo.
+## 🛠️ Como Iniciar o Projeto
 
-**Use your preferred IDE**
+### Pré-requisitos
+- Node.js instalado
+- Conta no Supabase (para as variáveis de ambiente)
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Passo a Passo
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+1.  **Instalação de Dependências**:
+    ```bash
+    npm install
+    ```
 
-Follow these steps:
+2.  **Configuração de Variáveis de Ambiente**:
+    Crie um arquivo `.env` na raiz com as chaves do seu projeto Supabase:
+    ```env
+    VITE_SUPABASE_URL=sua_url_do_supabase
+    VITE_SUPABASE_ANON_KEY=sua_chave_anon_key
+    ```
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+3.  **Execução em Desenvolvimento**:
+    ```bash
+    npm run dev
+    ```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+## 📂 Estrutura de Arquivos Principal
 
-# Step 3: Install the necessary dependencies.
-npm i
+- `src/components/`: Componentes reutilizáveis da interface.
+- `src/pages/`: Telas principais do aplicativo (Chat, Dashboard, Calendar, etc.).
+- `src/hooks/`: Hooks customizados para lógica de estado e integração com Supabase.
+- `src/lib/`: Configurações de bibliotecas (Supabase client, utils).
+- `supabase/functions/`: Edge Functions para processamento de IA e integrações.
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+---
+## 📚 Atualização de Schema de Banco de Dados
+
+A tabela **`calendar_posts`** agora possui a coluna **`scheduled_at`** (tipo `timestamptz`).
+- Quando um post está no status `rascunho` ou não possui data de agendamento, o campo **`scheduled_at`** é salvo como **`null`**.
+- Para posts agendados, a data é armazenada em UTC e convertida para ISO string ao ser enviada ao Supabase.
+
+Essa lógica foi implementada no hook **`useCalendarPosts`**, na função `toDb`, que define:
+
+```ts
+date: post.status === 'rascunho' || !post.scheduledDate
+        ? null
+        : new Date(post.scheduledDate).toISOString(),
 ```
 
-**Edit a file directly in GitHub**
+Isso evita erros de `Invalid Date` no calendário e garante que o **auto‑publisher** execute apenas posts com data válida.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+---
+Este projeto foi desenvolvido originalmente via Lovable e customizado para oferecer a melhor experiência em criação de conteúdo profissional.

@@ -61,7 +61,7 @@ export interface CalendarPost {
   title: string;
   content: string;
   category: TemplateCategory;
-  scheduledDate: Date;
+  scheduledDate: Date | null;
   status: 'rascunho' | 'agendado' | 'publicado';
   createdAt: Date;
 }

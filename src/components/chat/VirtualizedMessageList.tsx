@@ -7,22 +7,25 @@ import { Loader2, Sparkles } from 'lucide-react';
 interface VirtualizedMessageListProps {
   messages: Message[];
   isLoading: boolean;
+  streamingMessage?: string | null;
 }
 
 export function VirtualizedMessageList({
   messages,
   isLoading,
+  streamingMessage,
 }: VirtualizedMessageListProps) {
   const parentRef = useRef<HTMLDivElement>(null);
 
-  // Add loading indicator as a virtual item if needed
-  const showLoadingIndicator = isLoading && messages[messages.length - 1]?.role !== 'assistant';
-  const itemCount = messages.length + (showLoadingIndicator ? 1 : 0);
+  // Add loading indicator or streaming message as a virtual item
+  const showStreaming = !!streamingMessage;
+  const showLoadingIndicator = isLoading && !showStreaming && messages[messages.length - 1]?.role !== 'assistant';
+  const itemCount = messages.length + (showLoadingIndicator || showStreaming ? 1 : 0);
 
   const virtualizer = useVirtualizer({
     count: itemCount,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 150, // Estimated height of each message
+    estimateSize: () => 150,
     overscan: 5, // Render 5 extra items above/below viewport
   });
 
@@ -69,7 +72,20 @@ export function VirtualizedMessageList({
                 }}
               >
                 <div className="pb-6">
-                  {isLoadingItem ? (
+                  {virtualItem.index < messages.length ? (
+                    <ChatMessage
+                      message={messages[virtualItem.index]}
+                    />
+                  ) : showStreaming ? (
+                    <ChatMessage
+                      message={{
+                        id: 'streaming',
+                        role: 'assistant',
+                        content: streamingMessage!,
+                        timestamp: new Date()
+                      }}
+                    />
+                  ) : (
                     <div className="flex gap-3">
                       <div className="w-8 h-8 rounded-full linkedin-gradient flex items-center justify-center flex-shrink-0">
                         <Sparkles className="w-4 h-4 text-primary-foreground" />
@@ -79,10 +95,6 @@ export function VirtualizedMessageList({
                         <span className="text-muted-foreground">Gerando post...</span>
                       </div>
                     </div>
-                  ) : (
-                    <ChatMessage
-                      message={messages[virtualItem.index]}
-                    />
                   )}
                 </div>
               </div>

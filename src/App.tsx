@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import Index from "./pages/Index";
 import Templates from "./pages/Templates";
@@ -15,6 +16,7 @@ import Gallery from "./pages/Gallery";
 import LinkedIn from "./pages/LinkedIn";
 import Install from "./pages/Install";
 import NotFound from "./pages/NotFound";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -32,8 +34,22 @@ const App = () => (
               <Route path="/analyze" element={<Analyze />} />
               <Route path="/carousel" element={<Carousel />} />
               <Route path="/calendar" element={<Calendar />} />
-              <Route path="/gallery" element={<Gallery />} />
-              <Route path="/linkedin" element={<LinkedIn />} />
+              <Route 
+                path="/gallery" 
+                element={
+                  <ProtectedRoute>
+                    <Gallery />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/linkedin" 
+                element={
+                  <ProtectedRoute>
+                    <LinkedIn />
+                  </ProtectedRoute>
+                } 
+              />
               <Route path="/install" element={<Install />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

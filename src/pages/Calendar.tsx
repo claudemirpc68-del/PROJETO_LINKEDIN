@@ -8,7 +8,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useCalendarPosts } from '@/hooks/useCalendarPosts';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { CalendarPost, TemplateCategory } from '@/types';
 import { getCategoryLabel, getCategoryColor } from '@/data/templates';
 import { useToast } from '@/hooks/use-toast';
@@ -57,7 +56,8 @@ export default function CalendarPage() {
     title: '',
     content: '',
     category: 'dica-pratica' as TemplateCategory,
-    status: 'rascunho' as CalendarPost['status']
+    status: 'rascunho' as CalendarPost['status'],
+    time: '09:00'
   });
   const { toast } = useToast();
 
@@ -68,8 +68,8 @@ export default function CalendarPage() {
   }, [currentMonth]);
 
   const getPostsForDay = (day: Date) => {
-    return posts.filter(post => 
-      isSameDay(new Date(post.scheduledDate), day)
+    return posts.filter(post =>
+      post.scheduledDate && isSameDay(new Date(post.scheduledDate), day)
     );
   };
 
@@ -83,7 +83,8 @@ export default function CalendarPage() {
       title: '',
       content: '',
       category: 'dica-pratica',
-      status: 'rascunho'
+      status: 'rascunho',
+      time: format(new Date(), 'HH:mm')
     });
     setIsDialogOpen(true);
   };
@@ -95,7 +96,8 @@ export default function CalendarPage() {
       title: post.title,
       content: post.content || '',
       category: post.category,
-      status: post.status
+      status: post.status,
+      time: format(new Date(post.scheduledDate), 'HH:mm')
     });
     setIsDialogOpen(true);
   };
@@ -106,10 +108,17 @@ export default function CalendarPage() {
     setIsSaving(true);
 
     try {
+      const [hours, minutes] = formData.time.split(':').map(Number);
+      const scheduledDateTime = new Date(selectedDate);
+      scheduledDateTime.setHours(hours, minutes, 0, 0);
+
       if (editingPost) {
         const result = await updatePost(editingPost.id, {
-          ...formData,
-          scheduledDate: selectedDate
+          title: formData.title,
+          content: formData.content,
+          category: formData.category,
+          status: formData.status,
+          scheduledDate: scheduledDateTime
         });
 
         if (result.success) {
@@ -119,8 +128,11 @@ export default function CalendarPage() {
         }
       } else {
         const result = await addPost({
-          ...formData,
-          scheduledDate: selectedDate
+          title: formData.title,
+          content: formData.content,
+          category: formData.category,
+          status: formData.status,
+          scheduledDate: scheduledDateTime
         });
 
         if (result.success) {
@@ -182,7 +194,7 @@ export default function CalendarPage() {
       content: post.content,
       category: post.category,
       status: post.status,
-      scheduledDate: format(new Date(post.scheduledDate), 'yyyy-MM-dd'),
+      scheduledDate: format(new Date(post.scheduledDate), 'yyyy-MM-dd HH:mm'),
       createdAt: post.createdAt ? format(new Date(post.createdAt), 'yyyy-MM-dd HH:mm:ss') : null
     }));
     
@@ -204,7 +216,7 @@ export default function CalendarPage() {
       `"${(post.content || '').replace(/"/g, '""').replace(/\n/g, ' ')}"`,
       post.category,
       post.status,
-      format(new Date(post.scheduledDate), 'yyyy-MM-dd'),
+      format(new Date(post.scheduledDate), 'yyyy-MM-dd HH:mm'),
       post.createdAt ? format(new Date(post.createdAt), 'yyyy-MM-dd HH:mm:ss') : ''
     ]);
     
@@ -235,11 +247,11 @@ export default function CalendarPage() {
 
   return (
     <AppLayout>
-      <div className="p-6 max-w-6xl mx-auto">
+      <div className="p-3 md:p-6 max-w-6xl mx-auto">
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
-            <h1 className="text-3xl font-bold text-foreground">Calendário de Conteúdo</h1>
-            <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:items-center sm:flex-row justify-between mb-2 gap-4">
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground">Calendário de Conteúdo</h1>
+            <div className="flex flex-wrap items-center gap-3">
               {posts.length > 0 && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -303,17 +315,19 @@ export default function CalendarPage() {
         {/* Calendar Grid */}
         <Card>
           <CardContent className="p-4">
-            {/* Day headers */}
-            <div className="grid grid-cols-7 gap-1 mb-2">
-              {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
-                <div key={day} className="text-center text-sm font-medium text-muted-foreground py-2">
-                  {day}
+            <div className="overflow-x-auto">
+              <div className="min-w-[600px]">
+                {/* Day headers */}
+                <div className="grid grid-cols-7 gap-1 mb-2">
+                  {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
+                    <div key={day} className="text-center text-sm font-medium text-muted-foreground py-2">
+                      {day}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
 
-            {/* Calendar days */}
-            <div className="grid grid-cols-7 gap-1">
+                {/* Calendar days */}
+                <div className="grid grid-cols-7 gap-1">
               {/* Empty cells for days before the first day of month */}
               {Array.from({ length: firstDayOfMonth }).map((_, i) => (
                 <div key={`empty-${i}`} className="min-h-[100px] bg-muted/30 rounded-lg" />
@@ -358,6 +372,8 @@ export default function CalendarPage() {
                   </div>
                 );
               })}
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -371,7 +387,8 @@ export default function CalendarPage() {
             <CardContent>
               <div className="space-y-3">
                 {posts
-                  .sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime())
+                  .filter(p => p.scheduledDate)
+                  .sort((a, b) => new Date(a.scheduledDate!).getTime() - new Date(b.scheduledDate!).getTime())
                   .slice(0, 5)
                   .map(post => (
                     <div 
@@ -490,6 +507,20 @@ export default function CalendarPage() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-foreground">Horário de Postagem</label>
+                <Input
+                  type="time"
+                  value={formData.time}
+                  onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                  className="mt-1"
+                  disabled={isSaving}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  O post será publicado automaticamente no LinkedIn neste horário se o status estiver como "Agendado".
+                </p>
               </div>
             </div>
 

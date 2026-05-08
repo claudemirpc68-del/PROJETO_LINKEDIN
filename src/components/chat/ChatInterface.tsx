@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Message, Conversation } from '@/types';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useChat } from '@/hooks/useChat'; // Novo hook
 import { ChatMessage } from './ChatMessage';
 import { ChatSuggestions } from './ChatSuggestions';
 import { VirtualizedMessageList } from './VirtualizedMessageList';
@@ -25,7 +26,14 @@ import { supabase } from '@/integrations/supabase/client';
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-post`;
 
 export function ChatInterface() {
-  const [conversations, setConversations] = useLocalStorage<Conversation[]>('linkedin-conversations', []);
+  const { 
+    conversations, 
+    isLoading: isChatLoading, 
+    createConversation, 
+    addMessage: saveMessage, 
+    deleteConversation 
+  } = useChat();
+  
   const [webhookUrl, setWebhookUrl] = useLocalStorage<string>('linkedin-webhook-url', '');
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [input, setInput] = useState('');
@@ -34,6 +42,7 @@ export function ChatInterface() {
   const [tempWebhookUrl, setTempWebhookUrl] = useState(webhookUrl);
   const [showHistory, setShowHistory] = useState(false);
   const [visibleConversations, setVisibleConversations] = useState(10);
+  const [streamingMessage, setStreamingMessage] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const CONVERSATIONS_PER_PAGE = 10;
@@ -54,93 +63,42 @@ export function ChatInterface() {
 
   // Virtualized list handles scrolling automatically
 
-  const createNewConversation = () => {
-    const newConversation: Conversation = {
-      id: crypto.randomUUID(),
-      title: 'Nova conversa',
-      messages: [],
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    setConversations(prev => [newConversation, ...prev]);
-    setCurrentConversationId(newConversation.id);
-    return newConversation.id;
+  const handleNewChat = () => {
+    setCurrentConversationId(null);
+    setShowHistory(false);
   };
 
-  const updateConversation = (convId: string, updates: Partial<Conversation>) => {
-    setConversations(prev =>
-      prev.map(c => (c.id === convId ? { ...c, ...updates, updatedAt: new Date() } : c))
-    );
-  };
-
-  const addMessage = (convId: string, message: Message) => {
-    setConversations(prev =>
-      prev.map(c =>
-        c.id === convId
-          ? { ...c, messages: [...c.messages, message], updatedAt: new Date() }
-          : c
-      )
-    );
-  };
-
-  const updateAssistantMessage = (convId: string, content: string, messageId?: string) => {
-    let msgId = messageId;
-
-    setConversations(prev =>
-      prev.map(c => {
-        if (c.id !== convId) return c;
-        const msgs = [...c.messages];
-        const lastMsg = msgs[msgs.length - 1];
-        if (lastMsg?.role === 'assistant') {
-          msgs[msgs.length - 1] = { ...lastMsg, content };
-          msgId = lastMsg.id;
-        } else {
-          const newId = crypto.randomUUID();
-          msgs.push({
-            id: newId,
-            role: 'assistant',
-            content,
-            timestamp: new Date(),
-          });
-          msgId = newId;
-        }
-        return { ...c, messages: msgs, updatedAt: new Date() };
-      })
-    );
-
-    return msgId;
+  const updateAssistantMessageLocal = (convId: string, content: string) => {
+    // Esta função apenas atualiza a UI durante o streaming
+    // A persistência final acontece no final do stream
+    // Como o useChat já expõe o estado de conversas, e nós atualizamos ele
+    // via setConversations internamente no hook, aqui podemos apenas
+    // simular o update para a UI fluir bem.
+    // No entanto, para simplicidade e reatividade correta, vamos deixar o hook
+    // lidar com o estado e apenas injetar a mensagem final.
   };
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
-    const userMessage: Message = {
-      id: crypto.randomUUID(),
-      role: 'user',
-      content: input.trim(),
-      timestamp: new Date(),
-    };
-
-    let convId = currentConversationId;
-    if (!convId) {
-      convId = createNewConversation();
-    }
-
-    // Update title if first message
-    const conv = conversations.find(c => c.id === convId);
-    if (conv && conv.messages.length === 0) {
-      updateConversation(convId, { title: input.trim().slice(0, 50) });
-    }
-
-    // Add user message
-    addMessage(convId, userMessage);
-
+    const currentInput = input.trim();
     setInput('');
     setIsLoading(true);
 
+    let convId = currentConversationId;
+    
     try {
-      // Get current conversation history for context
+      // 1. Criar conversa se necessário
+      if (!convId) {
+        convId = await createConversation(currentInput.slice(0, 50));
+        if (!convId) throw new Error('Não foi possível iniciar a conversa');
+        setCurrentConversationId(convId);
+      }
+
+      // 2. Salvar mensagem do usuário
+      await saveMessage(convId, 'user', currentInput);
+
+      // 3. Preparar histórico para a IA
       const currentConv = conversations.find(c => c.id === convId);
       const messageHistory = currentConv?.messages.map(m => ({
         role: m.role,
@@ -149,10 +107,11 @@ export function ChatInterface() {
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        toast.error('Faça login para gerar posts.');
+        toast.error('Sua sessão expirou. Faça login novamente.');
         setIsLoading(false);
         return;
       }
+
       const resp = await fetch(CHAT_URL, {
         method: 'POST',
         headers: {
@@ -160,7 +119,7 @@ export function ChatInterface() {
           Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          message: userMessage.content,
+          message: currentInput,
           messages: messageHistory,
           webhookUrl: webhookUrl.trim(),
           conversationId: convId,
@@ -169,89 +128,61 @@ export function ChatInterface() {
 
       if (!resp.ok) {
         const errorData = await resp.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to generate post');
+        throw new Error(errorData.error || 'Erro na resposta da IA');
       }
 
-      if (!resp.body) {
-        throw new Error('No response body');
-      }
+      if (!resp.body) throw new Error('Sem corpo de resposta');
 
       const reader = resp.body.getReader();
       const decoder = new TextDecoder();
-      let textBuffer = '';
       let assistantContent = '';
       let streamDone = false;
-      let assistantMsgId: string | undefined;
 
+      // Criar uma mensagem temporária para o streaming na UI
+      const tempAssistantId = crypto.randomUUID();
+      
       while (!streamDone) {
         const { done, value } = await reader.read();
         if (done) break;
-        textBuffer += decoder.decode(value, { stream: true });
-
-        let newlineIndex: number;
-        while ((newlineIndex = textBuffer.indexOf('\n')) !== -1) {
-          let line = textBuffer.slice(0, newlineIndex);
-          textBuffer = textBuffer.slice(newlineIndex + 1);
-
-          if (line.endsWith('\r')) line = line.slice(0, -1);
-          if (line.startsWith(':') || line.trim() === '') continue;
-          if (!line.startsWith('data: ')) continue;
-
-          const jsonStr = line.slice(6).trim();
-          if (jsonStr === '[DONE]') {
-            streamDone = true;
-            break;
-          }
-
-          try {
-            const parsed = JSON.parse(jsonStr);
-            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
-            if (content) {
-              assistantContent += content;
-              assistantMsgId = updateAssistantMessage(convId!, assistantContent, assistantMsgId);
+        const chunk = decoder.decode(value, { stream: true });
+        
+        const lines = chunk.split('\n');
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const jsonStr = line.slice(6).trim();
+            if (jsonStr === '[DONE]') {
+              streamDone = true;
+              break;
             }
-          } catch {
-            textBuffer = line + '\n' + textBuffer;
-            break;
+            try {
+              const parsed = JSON.parse(jsonStr);
+              const content = parsed.choices?.[0]?.delta?.content;
+              if (content) {
+                assistantContent += content;
+                setStreamingMessage(assistantContent);
+              }
+            } catch (e) { /* chunk incompleto */ }
           }
         }
       }
 
-      // Final flush
-      if (textBuffer.trim()) {
-        for (let raw of textBuffer.split('\n')) {
-          if (!raw) continue;
-          if (raw.endsWith('\r')) raw = raw.slice(0, -1);
-          if (raw.startsWith(':') || raw.trim() === '') continue;
-          if (!raw.startsWith('data: ')) continue;
-          const jsonStr = raw.slice(6).trim();
-          if (jsonStr === '[DONE]') continue;
-          try {
-            const parsed = JSON.parse(jsonStr);
-            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
-            if (content) {
-              assistantContent += content;
-              assistantMsgId = updateAssistantMessage(convId!, assistantContent, assistantMsgId);
-            }
-          } catch { /* ignore */ }
-        }
+      // 4. Salvar mensagem final da assistente no banco
+      setStreamingMessage(null);
+      if (assistantContent) {
+        await saveMessage(convId, 'assistant', assistantContent);
       }
 
       if (webhookUrl.trim()) {
-        toast.success('Post gerado com IA!');
+        toast.success('Post processado com sucesso!');
       }
     } catch (error) {
-      console.error('Error generating response:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Erro ao gerar post';
+      console.error('Error in chat:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
       
-      // Add error message inline in chat
-      const errorAssistantMessage: Message = {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        content: `⚠️ **Erro ao gerar resposta**\n\n${errorMessage}\n\nPor favor, tente novamente.`,
-        timestamp: new Date(),
-      };
-      addMessage(convId!, errorAssistantMessage);
+      if (convId) {
+        setStreamingMessage(null);
+        await saveMessage(convId, 'assistant', `⚠️ **Erro ao gerar resposta**\n\n${errorMessage}`);
+      }
       
       toast.error(errorMessage);
     } finally {
@@ -272,13 +203,12 @@ export function ChatInterface() {
     toast.success('Configurações salvas');
   };
 
-  const handleDeleteConversation = (id: string, e: React.MouseEvent) => {
+  const handleDeleteConversation = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setConversations(prev => prev.filter(c => c.id !== id));
-    if (currentConversationId === id) {
+    const success = await deleteConversation(id);
+    if (success && currentConversationId === id) {
       setCurrentConversationId(null);
     }
-    toast.success('Conversa excluída');
   };
 
   const handleNewChat = () => {
@@ -448,6 +378,7 @@ export function ChatInterface() {
           <VirtualizedMessageList
             messages={messages}
             isLoading={isLoading}
+            streamingMessage={streamingMessage}
           />
         )}
 

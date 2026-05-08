@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocalStorage } from './useLocalStorage';
@@ -25,7 +25,7 @@ interface DbCalendarPost {
   user_id: string;
   title: string;
   content: string | null;
-  date: string;
+  scheduled_at: string | null; // Alterado de 'date' para 'scheduled_at'
   status: string;
   category: string;
   created_at: string;
@@ -39,6 +39,7 @@ export function useCalendarPosts() {
   const [isLoading, setIsLoading] = useState(true);
   const [localPosts, setLocalPosts] = useLocalStorage<CalendarPost[]>('linkedin-calendar-posts', []);
   const [migrationDone, setMigrationDone] = useLocalStorage<boolean>('calendar-migration-done', false);
+  const isInitialLoad = useRef(true);
 
   // Convert database row to local CalendarPost
   const fromDb = useCallback((row: DbCalendarPost): CalendarPost => ({
@@ -46,7 +47,7 @@ export function useCalendarPosts() {
     title: row.title,
     content: row.content || '',
     category: row.category as TemplateCategory,
-    scheduledDate: parseISO(row.date),
+    scheduledDate: row.scheduled_at ? new Date(row.scheduled_at) : null,
     status: statusFromDb[row.status] || 'rascunho',
     createdAt: parseISO(row.created_at)
   }), []);
@@ -57,7 +58,7 @@ export function useCalendarPosts() {
     user_id: userId,
     title: post.title,
     content: post.content || null,
-    date: format(new Date(post.scheduledDate), 'yyyy-MM-dd'),
+    scheduled_at: post.status === 'rascunho' || !post.scheduledDate ? null : new Date(post.scheduledDate).toISOString(),
     status: statusToDb[post.status] || 'draft',
     category: post.category
   }), []);
@@ -93,20 +94,23 @@ export function useCalendarPosts() {
   }, [user, migrationDone, localPosts, toDb, setMigrationDone, setLocalPosts, toast]);
 
   // Load posts from database or localStorage
-  const loadPosts = useCallback(async () => {
+  const loadPosts = useCallback(async (force = false) => {
+    if (!force && !isInitialLoad.current) return;
+    
     setIsLoading(true);
 
     if (user) {
       try {
-        const { data, error } = await supabase
-          .from('calendar_posts')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('date', { ascending: true });
+          const { data, error } = await supabase
+            .from('calendar_posts')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('scheduled_at', { ascending: true });
 
         if (error) throw error;
 
-        setPosts((data || []).map(fromDb));
+        const transformedPosts = (data || []).map(fromDb);
+        setPosts(transformedPosts);
       } catch (error) {
         console.error('Error loading posts:', error);
         toast({
@@ -119,18 +123,19 @@ export function useCalendarPosts() {
       // Use localStorage when not logged in
       setPosts(localPosts.map(post => ({
         ...post,
-        scheduledDate: new Date(post.scheduledDate),
+        scheduledDate: post.scheduledDate ? new Date(post.scheduledDate) : null,
         createdAt: new Date(post.createdAt)
       })));
     }
 
     setIsLoading(false);
+    isInitialLoad.current = false;
   }, [user, localPosts, fromDb, toast]);
 
   // Initial load and migration
   useEffect(() => {
     loadPosts();
-  }, [user]);
+  }, [user, loadPosts]);
 
   useEffect(() => {
     if (user && !migrationDone && localPosts.length > 0) {
@@ -177,7 +182,7 @@ export function useCalendarPosts() {
         if (updates.content !== undefined) updateData.content = updates.content || null;
         if (updates.category !== undefined) updateData.category = updates.category;
         if (updates.scheduledDate !== undefined) {
-          updateData.date = format(new Date(updates.scheduledDate), 'yyyy-MM-dd');
+          updateData.scheduled_at = updates.scheduledDate ? new Date(updates.scheduledDate).toISOString() : null;
         }
         if (updates.status !== undefined) {
           updateData.status = statusToDb[updates.status] || 'draft';
@@ -237,6 +242,6 @@ export function useCalendarPosts() {
     addPost,
     updatePost,
     deletePost,
-    refreshPosts: loadPosts
+    refreshPosts: () => loadPosts(true)
   };
 }

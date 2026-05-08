@@ -1,11 +1,14 @@
 import { AppSidebar } from './AppSidebar';
 import { MobileNav } from './MobileNav';
+import { useNotifications } from '@/hooks/useNotifications';
 
 interface AppLayoutProps {
   children: React.ReactNode;
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
+  useNotifications();
+  
   return (
     <div className="min-h-screen bg-background">
       <AppSidebar />
